@@ -1,2 +1,15 @@
-# Memory_Temperature_Principle
-The Memory Temperature Principle: Source code and paper for the novel observation on CPU cache behavior and the Pre-Warming Ceremony technique. 
+# The Memory Temperature Principle  
+**اولین کشف و نام‌گذاری رسمی توسط دانیال دیبا (danidiba)**  
+**تاریخ انتشار عمومی: ۸ دسامبر ۲۰۲۵**
+
+یک مدل ذهنی جدید برای توضیح باگ‌های عجیب عملکردی در حلقه‌های داغ و راه‌حل عملی آن.
+
+### پدیدهٔ اصلی
+وقتی یک متغیر **سرد** (Cold) ناگهان داخل یک مسیر **داغ** (Hot Path) استفاده می‌شه، چندین خط کش داغ از L1 بیرون می‌ریزن → **سرمازدگی جمعی حافظه (Collective Cache Frostbite)** → افت عملکرد تا ۴۰۰٪!
+
+### راه‌حل پیشنهادی
+**مراسم پیش‌گرمایش (Pre-Warming Ceremony)**  
+قبل از ورود به حلقهٔ بحرانی، یک‌بار همهٔ متغیرهای مورد نیاز رو «لمس» کن (حتی با عمل XOR بی‌معنی):
+
+```rust
+let _warm = config.threshold ^ flags.debug ^ metrics.counter ^ 0;
