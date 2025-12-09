@@ -4,7 +4,7 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{booktabs}
-\usepackage{array} % Added for column definition (m{...})
+\usepackage{array}
 \usepackage{hyperref}
 
 \lstset{
@@ -72,7 +72,7 @@ Extreme Contention (Memory Pressure $> L3$ Cache) & 1930.29 ms & 1781.86 ms & \t
 \label{tab:results}
 \end{table}
 
-Full Rust benchmark code and reports: \url{https://github.com/diba7star/Memory_Temperature_Principle/benchmark}
+Full Rust benchmark code and reports: \url{https://github.com/diba7star/Memory_Temperature_Principle/tree/main/benchmarks}
 
 \section{Conclusion}
 The Memory Temperature Principle provides the missing explanatory model for a large class of mysterious performance bugs. The Pre-Warming Ceremony is a compiler-independent, zero-overhead technique that belongs in every systems programmer’s toolbox, validated with up to \textbf{1.35$\times$ improvements} in performance-critical loops.
