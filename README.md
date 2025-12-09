@@ -50,7 +50,7 @@ The results confirm that while the effect is most dramatic in simple loops (1.35
 ## 📄 3. Paper and Full Code
 
   * **Full Paper (PDF):** [The Memory Temperature Principle - Danial Diba.pdf](The Memory Temperature Principle - Danial Diba.pdf)
-  * **Full Rust Benchmarks:** [View benchmark code on GitHub](https://www.google.com/search?q=https://github.com/diba7star/Memory_Temperature_Principle/tree/main/benchmarks)
+  * **Full Rust Benchmarks:** [View benchmark code on GitHub](https://www.google.com/search?q=https://github.com/diba7star/Memory_Temperature_Principle/tree/main/benchmark)
 
 -----
 
@@ -59,3 +59,4 @@ The results confirm that while the effect is most dramatic in simple loops (1.35
 The Memory Temperature Principle provides the missing explanatory model for a large class of mysterious performance bugs. The Pre-Warming Ceremony is a compiler-independent, zero-overhead technique that should be adopted as a **standard practice** in systems programming for optimizing critical code paths.
 
 ```
+
