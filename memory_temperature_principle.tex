@@ -1,10 +1,11 @@
-
 \documentclass[11pt]{article}
 \usepackage{geometry}
 \geometry{margin=1in}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{booktabs}
+\usepackage{array} % Added for column definition (m{...})
+\usepackage{hyperref}
 
 \lstset{
   basicstyle=\small\ttfamily,
@@ -19,19 +20,18 @@
 \date{}
 
 \begin{document}
-
 \maketitle
 
 \section*{Abstract}
-Despite advanced profiling tools, mysterious performance regressions still occur when a single “innocent” variable is accessed inside a hot code path. This paper introduces the \textbf{Memory Temperature Principle} — a new mental model that classifies memory into Hot, Warm, and Cold regions — and formally describes the previously undocumented \textbf{Collective Cache Frostbite} phenomenon. We present the zero-overhead \textbf{Pre-Warming Ceremony} technique that recovered up to \textbf{4.2× performance} in real-world benchmarks.
+Despite advanced profiling tools, systematic performance degradation still occurs when a single “cold” variable (infrequently accessed configuration flag or state variable) is accessed inside a hot code path (a tight, frequently run loop). This paper introduces the \textbf{Memory Temperature Principle} — a new mental model that classifies memory into Hot, Warm, and Cold regions — and formally describes the previously undocumented \textbf{Collective Cache Frostbite} phenomenon. We present the zero-overhead \textbf{Pre-Warming Ceremony} technique that demonstrably mitigated this effect, resulting in up to \textbf{1.35$\times$ performance improvement} in micro-benchmarks and \textbf{1.19$\times$ improvement} in high-contention memory simulations.
 
 \section{Introduction}
-Systems programmers frequently observe that adding a single conditional flag, debug check, or logging statement can degrade a tight loop by 30–60\%. Traditional explanations (“cache miss”) are correct but incomplete. This paper names the root cause for the first time.
+Systems programmers frequently observe that adding a single conditional flag, debug check, or logging statement can degrade a tight loop by 30–60\%. Traditional explanations (“cache miss”) are correct but incomplete. This paper names the root cause for the first time, validated empirically on x86 hardware with up to \textbf{1.35$\times$ speedup} from the Pre-Warming Ceremony.
 
 \section{The Memory Temperature Model}
 \begin{itemize}
-\item \textbf{Hot}: $\geq$1000 accesses/ms \( \rightarrow \) almost always in L1d cache
-\item \textbf{Warm}: 1–1000 accesses/ms \( \rightarrow \) typically in L2/L3
+\item \textbf{Hot}: $\geq$1000 accesses/ms $\rightarrow$ almost always in L1d cache
+\item \textbf{Warm}: 1–1000 accesses/ms $\rightarrow$ typically in L2/L3
 \item \textbf{Cold}: $\leq$1 access/ms or accessed only once (e.g. config loaded at startup)
 \end{itemize}
 
@@ -42,8 +42,8 @@ When a Cold variable is suddenly touched inside a Hot path, the CPU must evict m
 Deliberately touch (read or XOR with zero) every variable that will be used in the hot path \textbf{once, immediately before entry}:
 
 \begin{lstlisting}
-// Rust example – real measured 4.2× speedup
-let _warm = config.threshold ^ flags.debug ^ metrics.counter ^ 0;  // Pre-Warming Ceremony
+// Rust example – real measured 1.35× speedup (See full validation in Experimental Results)
+let _warm = config.threshold ^ flags.debug ^ metrics.counter ^ 0; // Pre-Warming Ceremony
 
 for i in 0..100_000_000 {
     if value > config.threshold && !flags.debug {
@@ -53,23 +53,29 @@ for i in 0..100_000_000 {
 \end{lstlisting}
 
 \section{Experimental Results}
-Tested on AMD Ryzen 9 7950X and Intel Xeon Platinum 8468.
+Tested on standard x86-64 architecture using high-precision Rust benchmarks (optimized release mode) under controlled conditions, demonstrating the MTP effect under various memory pressures.
 
 \begin{table}[h]
 \centering
-\begin{tabular}{lccc}
+\caption{Validation of Memory Temperature Principle (MTP)}
+\begin{tabular}{>{\raggedright}m{5.5cm}ccc}
 \toprule
-Benchmark & Before Warm-up & After Warm-up & Improvement \\
+\textbf{Scenario Tested} & \textbf{Cold Run (Avg Time)} & \textbf{Warm Run (Avg Time)} & \textbf{Improvement} \\
 \midrule
-100M iterations & 681 ms & 162 ms & \textbf{4.2× faster} \\
-L1d cache misses & 18.3\% & 0.27\% & \textbf{68× fewer} \\
-IPC & 1.91 & 3.84 & \textbf{2.0×} \\
+Micro-Benchmark (Branch-Heavy Code) & 185.22 ms & 137.60 ms & \textbf{1.35$\times$ faster (35\%)} \\
+\midrule
+Medium Contention (Memory Pressure $> L1$ Cache) & 40.90 ms & 34.29 ms & \textbf{1.19$\times$ faster (19\%)} \\
+\midrule
+Extreme Contention (Memory Pressure $> L3$ Cache) & 1930.29 ms & 1781.86 ms & \textbf{1.08$\times$ faster (8.3\%)} \\
 \bottomrule
 \end{tabular}
+\label{tab:results}
 \end{table}
 
+Full Rust benchmark code and reports: \url{https://github.com/diba7star/Memory_Temperature_Principle/benchmark}
+
 \section{Conclusion}
-The Memory Temperature Principle provides the missing explanatory model for a large class of mysterious performance bugs. The Pre-Warming Ceremony is a compiler-independent, zero-overhead technique that belongs in every systems programmer’s toolbox.
+The Memory Temperature Principle provides the missing explanatory model for a large class of mysterious performance bugs. The Pre-Warming Ceremony is a compiler-independent, zero-overhead technique that belongs in every systems programmer’s toolbox, validated with up to \textbf{1.35$\times$ improvements} in performance-critical loops.
 
 \vspace{1cm}
 \noindent © 2025 Danial Diba – First public disclosure of the Memory Temperature Principle \\
@@ -77,5 +83,4 @@ Keywords: cache behavior, performance optimization, collective frostbite, pre-wa
 
 \bibliographystyle{plain}
 \bibliography{references}
-
 \end{document}
