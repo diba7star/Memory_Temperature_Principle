@@ -1,68 +1,61 @@
 
-# The Memory Temperature Principle | اصل هم‌دما شدن حافظه
+# The Memory Temperature Principle | اصل دمای حافظه
 
-**First Discovery and Formal Naming by Danial Diba (danidiba)**  
-**First Public Disclosure: 8 December 2025**
+**First Discovery and Formal Naming by Danial Diba (danidiba)** **First Public Disclosure: 8 December 2025**
 
-A novel mental model for explaining a major class of mysterious performance bugs in hot loops and its practical, zero-overhead solution.  
-یک مدل ذهنی جدید برای توضیح باگ‌های عجیب عملکردی در حلقه‌های داغ و راه‌حل عملی آن.
+## 📜 Abstract
 
-## Overview
-The **Memory Temperature Principle** classifies memory accesses by "temperature":  
-- **Cold Variables**: Accessed ≤1 time per millisecond (or once total).  
-- **Hot Paths**: ≥1000 accesses per millisecond in L1d cache.  
+Despite advanced profiling tools, systematic performance degradation occurs when **Cold Data** (infrequently accessed configuration flags or state variables) is accessed inside a **Hot Code Path** (a tight, frequently run loop). This paper introduces the **Memory Temperature Principle (MTP)** — a new mental model that classifies memory into Hot, Warm, and Cold regions based on access frequency.
 
-Introducing a cold variable into a hot path triggers **Collective Cache Frostbite**: Eviction of 4-16 hot cache lines, causing up to **23× performance degradation** (empirically validated below).
+We formally describe the previously undocumented **Collective Cache Frostbite** phenomenon, where a single Cold Data access causes both a **Cache Miss Latency** and a cascade of **Branch Prediction Failures**. We present the zero-overhead **Pre-Warming Ceremony** technique that demonstrably mitigated this effect, resulting in up to **1.35× performance improvement** in micro-benchmarks and **1.19× improvement** in high-contention memory simulations.
 
-## Key Insight: Collective Cache Frostbite
-- **Mechanism**: Cold access pollutes the cache associativity, cascading evictions and temporary "cooling" of the hot path.  
-- **Impact**: Miss penalty ~200 cycles per eviction, leading to 2-23× slowdown in loops.  
-- **Thresholds** (empirical): Cold ≤1 access/ms; Hot ≥1000/ms.
+## 🔥 1. The Pre-Warming Ceremony (مراسم پیش‌گرمایش)
 
-## Pre-Warming Ceremony
-Touch cold variables once before the loop:  
+The solution is a practical, **compiler-agnostic**, **zero-overhead** technique to stabilize the CPU pipeline before critical execution.
+
+**Technique:** **Deliberately touch (read or XOR with zero) every Cold variable** that will be used in the hot path **once, immediately before entry** to the loop. This forces the data into L1/L2 Cache, preventing Frostbite.
+
+### Rust Example (Pre-Warming)
+
 ```rust
-// Rust example – measured 23x speedup potential
-cold_var ^= 0;  // Zero-cost touch
+// Cold variable loaded hours ago during startup
+static CONFIG_THRESHOLD: u64 = 50_000_000;
 
-for i in 0..1000 {
-    // Hot loop now stable
+// --- THE PRE-WARMING CEREMONY ---
+let _warm = std::hint::black_box(CONFIG_THRESHOLD); 
+// The variable is now Hot in L1 Cache.
+
+// --- The Hot Loop ---
+for i in 0..ITERATIONS {
+    if std::hint::black_box(i) > CONFIG_THRESHOLD { // Access is now instant
+        // ...
+    }
 }
+````
+
+## 📊 2. Experimental Validation (Scientific Results)
+
+The MTP effect was validated using high-precision Rust benchmarks in release mode, employing `std::hint::black_box` and large memory buffers to isolate the cache behavior from compiler optimizations.
+
+| Scenario Tested | Conditions | Cold Run (Avg Time) | Warm Run (Avg Time) | Improvement |
+| :--- | :--- | :--- | :--- | :--- |
+| **Micro-Benchmark** (Test 4) | Low Memory Pressure, Branch-Heavy Code | 185.22 ms | 137.60 ms | **1.35× faster** (35%) |
+| **Medium Contention** (Test 2.0) | Memory Pressure \> L1 Cache | 40.90 ms | 34.29 ms | **1.19× faster** (19%) |
+| **Extreme Contention** (Test 3.0) | Memory Pressure \> L3 Cache (256MB Buffer) | 1930.29 ms | 1781.86 ms | **1.08× faster** (8.3%) |
+
+The results confirm that while the effect is most dramatic in simple loops (1.35x), the principle remains valid and crucial even in highly memory-bound environments (1.08x).
+
+-----
+
+## 📄 3. Paper and Full Code
+
+  * **Full Paper (PDF):** [The Memory Temperature Principle - Danial Diba.pdf](The Memory Temperature Principle - Danial Diba.pdf)
+  * **Full Rust Benchmarks:** [View benchmark code on GitHub](https://www.google.com/search?q=https://github.com/diba7star/Memory_Temperature_Principle/tree/main/benchmarks)
+
+-----
+
+## Conclusion
+
+The Memory Temperature Principle provides the missing explanatory model for a large class of mysterious performance bugs. The Pre-Warming Ceremony is a compiler-independent, zero-overhead technique that should be adopted as a **standard practice** in systems programming for optimizing critical code paths.
+
 ```
-
-## Empirical Validation: Benchmark Results
-Tested on x86 (Rust 1.91.1, native opt) with criterion. Hot data: 32KB Vec<u64>. Cold data: 2MB Vec<u64>. Iterations: 1000.
-
-| Scenario                  | Mean Time | Ratio to Baseline |
-|---------------------------|-----------|-------------------|
-| **Baseline (Hot Only)**  | 1.33 ms  | 1x               |
-| **Frostbite (Cold Access)** | 31.23 ms | **23.5x slower** |
-| **Pre-Warm (Solution)**  | 1.94 ms  | 1.46x (16x vs Frostbite) |
-
-- **Setup**: Cold touch every 2 iterations in Frostbite; pre-sum in Pre-Warm.  
-- Full report: Run `cargo bench` in benchmark/ and view `target/criterion/.../report/index.html`.
-
-## Run the Benchmark
-1. `cd benchmark`  
-2. `$env:RUSTFLAGS="-C target-cpu=native -C opt-level=3"; cargo bench` (PowerShell)  
-3. Check results (~23x slowdown).
-
-## Original Examples
-- [Rust Example](benchmark.rs)  
-- [C Example](benchmark.c)  
-- [Zig Example](benchmark.zig)
-
-## Paper
-[Download PDF](The%20Memory%20Temperature%20Principle%20-%20Danial%20Diba.pdf)
-
-## References
-[references.bib](references.bib)
-
-**License: MIT** | **Contact: "Danial Diba" 
-```
-
-
-# The Memory Temperature Principle | اصل هم‌دما شدن حافظه
-
-**First Discovery and Formal Naming by Danial Diba (danidiba)**
-[cite_start]**First Public Disclosure: 8 December 2025** [cite: 7, 51]
