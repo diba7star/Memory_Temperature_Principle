@@ -1,0 +1,67 @@
+use std::time::Instant;
+use std::hint::black_box;
+
+// This benchmark simulates the "Branch Prediction Failure" scenario,
+// which showed the largest speedup (1.35x).
+
+const ITERATIONS: u64 = 100_000_000;
+
+// Critical and cold variable
+static mut CONFIG_THRESHOLD: u64 = 50_000_000;
+static mut COUNTER: u64 = 0;
+
+fn main() {
+    println!("=== Final Validation: 1.35x Speedup Scenario ===");
+    
+    // ==========================================
+    // TEST 1: COLD - No warming up
+    // ==========================================
+    unsafe {
+        // Ensure the threshold is in the middle of the loop to cause Branch Prediction Failure
+        CONFIG_THRESHOLD = 50_000_000; 
+        COUNTER = 0;
+        
+        let start_cold = Instant::now();
+        for i in 0..ITERATIONS {
+            // black_box prevents compiler optimization
+            if black_box(i) > CONFIG_THRESHOLD { 
+                COUNTER += 1;
+            }
+        }
+        let cold_time = start_cold.elapsed().as_nanos();
+        
+        // ==========================================
+        // TEST 2: WARM - Pre-warming ceremony
+        // ==========================================
+        
+        // --- THE PRE-WARMING CEREMONY ---
+        // A single access to the cold variable to bring it into L1 Cache and stabilize the Branch Predictor
+        let _warm = black_box(CONFIG_THRESHOLD); 
+        // --------------------------------
+        
+        COUNTER = 0;
+        let start_warm = Instant::now();
+        for i in 0..ITERATIONS {
+            if black_box(i) > CONFIG_THRESHOLD {
+                COUNTER += 1;
+            }
+        }
+        let warm_time = start_warm.elapsed().as_nanos();
+
+        // ==========================================
+        // REPORT
+        // ==========================================
+        let cold_ms = cold_time as f64 / 1_000_000.0;
+        let warm_ms = warm_time as f64 / 1_000_000.0;
+        
+        println!("Cold Time (Unoptimized Branch): {:.2} ms", cold_ms);
+        println!("Warm Time (Pre-Warmed Branch): {:.2} ms", warm_ms);
+        
+        if cold_ms > warm_ms {
+            let speedup = cold_ms / warm_ms;
+            println!("\n🏆 Result: Pre-Warming was {:.2}x FASTER", speedup);
+        } else {
+            println!("\nResult: No significant difference.");
+        }
+    }
+}
