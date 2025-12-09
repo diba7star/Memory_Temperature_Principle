@@ -1,67 +1,340 @@
-use std::time::Instant;
-use std::hint::black_box;
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>اصل دمای حافظه | Memory Temperature Principle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* تنظیم فونت Inter برای پشتیبانی بهتر از اعداد و حروف انگلیسی در کنار فارسی */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', Tahoma, Arial, sans-serif;
+            background-color: #1a1a2e;
+            color: #e4e4f5;
+            direction: rtl;
+        }
 
-// This benchmark simulates the "Branch Prediction Failure" scenario,
-// which showed the largest speedup (1.35x).
+        /* رنگ‌های دمای حافظه */
+        .color-hot { background-color: #ef4444; } /* Red - L1 Cache */
+        .color-warm { background-color: #f97316; } /* Orange - L2/L3 Cache */
+        .color-cold { background-color: #3b82f6; } /* Blue - Main Memory */
+        .color-frostbite { background-color: #0c0a09; } /* Darkest/Stall */
 
-const ITERATIONS: u64 = 100_000_000;
+        .cache-line {
+            height: 12px;
+            width: 100%;
+            border-radius: 2px;
+            margin-bottom: 2px;
+            transition: all 0.5s ease-in-out;
+        }
 
-// Critical and cold variable
-static mut CONFIG_THRESHOLD: u64 = 50_000_000;
-static mut COUNTER: u64 = 0;
+        .l1-cache-box {
+            border: 2px solid #ef4444;
+            transition: all 0.5s ease-in-out;
+        }
 
-fn main() {
-    println!("=== Final Validation: 1.35x Speedup Scenario ===");
+        .pipeline-bar {
+            height: 100%;
+            transition: width 0.3s ease-out, background-color 0.1s;
+        }
+
+        .slow-transition {
+            transition: all 1.5s ease-in-out !important;
+        }
+
+        .fast-transition {
+            transition: all 0.3s ease-out !important;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto bg-gray-900/70 p-6 md:p-10 rounded-xl shadow-2xl border border-blue-900/50">
+
+        <!-- Header -->
+        <h1 class="text-3xl md:text-5xl font-extrabold text-blue-400 mb-2 border-b-4 border-blue-600 pb-2">
+            اصل دمای حافظه
+        </h1>
+        <p class="text-xl text-gray-300 mb-6">
+            <span class="font-bold text-red-400">Memory Temperature Principle (MTP)</span>: مدلی برای بهینه‌سازی مسیرهای بحرانی کد.
+        </p>
+
+        <!-- Legend and Model -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 text-center text-sm font-semibold">
+            <div class="p-3 rounded-lg color-hot text-gray-900 shadow-lg">داغ (Hot) - L1 Cache</div>
+            <div class="p-3 rounded-lg color-warm text-gray-900 shadow-lg">گرم (Warm) - L2/L3 Cache</div>
+            <div class="p-3 rounded-lg color-cold text-white shadow-lg">سرد (Cold) - Main Memory</div>
+        </div>
+
+        <!-- Simulation Container -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-8">
+            <h2 class="text-2xl font-bold text-red-300 mb-4 border-b border-gray-600 pb-2">شبیه‌سازی: مسیر کد داغ (Hot Code Path)</h2>
+            
+            <!-- CPU/Pipeline -->
+            <div class="flex items-center justify-between mb-4">
+                <div class="text-xl font-mono text-green-400">CPU Pipeline (پردازشگر)</div>
+                <div id="pipelineStatus" class="text-lg font-bold">آماده...</div>
+            </div>
+
+            <div class="h-8 bg-gray-700 rounded-full overflow-hidden mb-6">
+                <div id="pipelineBar" class="pipeline-bar bg-green-500" style="width: 100%;"></div>
+            </div>
+
+            <!-- Hot Loop & L1 Cache -->
+            <div class="flex flex-col md:flex-row items-start gap-6">
+                
+                <!-- Code Visualization -->
+                <div class="md:w-1/2 w-full bg-gray-900 p-4 rounded-lg border border-gray-700">
+                    <p class="text-yellow-400 font-mono mb-2">مسیر کد داغ (Hot Loop):</p>
+                    <code class="block whitespace-pre bg-gray-700/50 p-3 rounded-md text-sm">
+// متغیر داغ
+let current_item = ...; 
+
+for i in 0..ITERATIONS {{
+    // دسترسی سریع به داده‌های داغ
+    <span id="hotAccess1" class="bg-red-900/50">if current_item > 0 ...</span> 
     
-    // ==========================================
-    // TEST 1: COLD - No warming up
-    // ==========================================
-    unsafe {
-        // Ensure the threshold is in the middle of the loop to cause Branch Prediction Failure
-        CONFIG_THRESHOLD = 50_000_000; 
-        COUNTER = 0;
-        
-        let start_cold = Instant::now();
-        for i in 0..ITERATIONS {
-            // black_box prevents compiler optimization
-            if black_box(i) > CONFIG_THRESHOLD { 
-                COUNTER += 1;
-            }
-        }
-        let cold_time = start_cold.elapsed().as_nanos();
-        
-        // ==========================================
-        // TEST 2: WARM - Pre-warming ceremony
-        // ==========================================
-        
-        // --- THE PRE-WARMING CEREMONY ---
-        // A single access to the cold variable to bring it into L1 Cache and stabilize the Branch Predictor
-        let _warm = black_box(CONFIG_THRESHOLD); 
-        // --------------------------------
-        
-        COUNTER = 0;
-        let start_warm = Instant::now();
-        for i in 0..ITERATIONS {
-            if black_box(i) > CONFIG_THRESHOLD {
-                COUNTER += 1;
-            }
-        }
-        let warm_time = start_warm.elapsed().as_nanos();
+    // دسترسی بحرانی به متغیر Cold:
+    <span id="coldAccess" class="bg-blue-900/50 p-1 rounded-sm">if i > CONFIG_THRESHOLD {{ ... }}</span> 
 
-        // ==========================================
-        // REPORT
-        // ==========================================
-        let cold_ms = cold_time as f64 / 1_000_000.0;
-        let warm_ms = warm_time as f64 / 1_000_000.0;
-        
-        println!("Cold Time (Unoptimized Branch): {:.2} ms", cold_ms);
-        println!("Warm Time (Pre-Warmed Branch): {:.2} ms", warm_ms);
-        
-        if cold_ms > warm_ms {
-            let speedup = cold_ms / warm_ms;
-            println!("\n🏆 Result: Pre-Warming was {:.2}x FASTER", speedup);
-        } else {
-            println!("\nResult: No significant difference.");
+    // ادامه اجرای داغ
+    <span id="hotAccess2" class="bg-red-900/50">process(current_item);</span>
+}}
+                    </code>
+                    <p class="mt-4 text-xs text-gray-400">
+                        <span class="text-yellow-500 font-bold">برای جزئیات بیشتر:</span>
+                        <a href="https://github.com/diba7star/Memory_Temperature_Principle/tree/main/benchmark" target="_blank" class="text-blue-400 hover:text-blue-300 underline">مشاهده کد کامل بنچ‌مارک Rust (Micro-Benchmark)</a>
+                    </p>
+                </div>
+
+                <!-- L1 Cache Visualization -->
+                <div class="md:w-1/2 w-full">
+                    <div class="text-xl font-mono text-red-400 mb-2">L1 Cache (64-byte lines)</div>
+                    <div id="l1Cache" class="l1-cache-box p-2 bg-gray-900/50 h-40">
+                        <div class="text-center text-xs text-gray-500 mb-1">داده‌های Hot</div>
+                        <!-- Hot Data Lines -->
+                        <div class="flex flex-wrap gap-1">
+                            <div id="line1" class="cache-line color-hot w-[calc(25%-4px)]"></div>
+                            <div id="line2" class="cache-line color-hot w-[calc(25%-4px)]"></div>
+                            <div id="line3" class="cache-line color-hot w-[calc(25%-4px)]"></div>
+                            <div id="line4" class="cache-line color-hot w-[calc(25%-4px)]"></div>
+                            <div id="line5" class="cache-line color-hot w-[calc(25%-4px)]"></div>
+                            <div id="line6" class="cache-line color-hot w-[calc(25%-4px)]"></div>
+                            <div id="line7" class="cache-line color-hot w-[calc(25%-4px)]"></div>
+                            <div id="line8" class="cache-line color-hot w-[calc(25%-4px)]"></div>
+                        </div>
+                        <div id="coldLinePlaceholder" class="cache-line color-cold mt-2 transform -translate-x-full opacity-0" style="width: 100%;">Cold Data</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div class="flex flex-wrap justify-center items-center gap-4 mt-8 pt-4 border-t border-gray-700">
+                <button id="runCold" class="px-6 py-3 text-lg font-bold bg-yellow-600 hover:bg-yellow-500 text-gray-900 rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+                    اجرای "سرد" (Cold Run)
+                </button>
+                <button id="runWarm" class="px-6 py-3 text-lg font-bold bg-green-600 hover:bg-green-500 text-white rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+                    اجرای "گرم" (Pre-Warming Ceremony)
+                </button>
+                <button id="resetBtn" class="px-6 py-3 text-lg font-bold bg-gray-600 hover:bg-gray-500 text-white rounded-lg shadow-xl transition duration-300 transform hover:scale-105">
+                    بازنشانی
+                </button>
+            </div>
+            
+            <!-- Results Display -->
+            <div id="resultsBox" class="mt-8 p-4 bg-gray-900 rounded-lg hidden">
+                <h3 class="text-xl font-bold text-red-500 mb-2">نتیجه عملکرد</h3>
+                <p id="resultText" class="text-lg"></p>
+                <p class="text-sm text-gray-400 mt-2">بر اساس نتایج واقعی، تکنیک پیش‌گرمایش تا <span class="text-yellow-400 font-bold">1.35 برابر</span> بهبود عملکرد را نشان داد.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="text/javascript">
+        const l1Cache = document.getElementById('l1Cache');
+        const pipelineBar = document.getElementById('pipelineBar');
+        const pipelineStatus = document.getElementById('pipelineStatus');
+        const coldAccess = document.getElementById('coldAccess');
+        const hotAccess1 = document.getElementById('hotAccess1');
+        const hotAccess2 = document.getElementById('hotAccess2');
+        const coldLinePlaceholder = document.getElementById('coldLinePlaceholder');
+        const cacheLines = [
+            document.getElementById('line1'), document.getElementById('line2'),
+            document.getElementById('line3'), document.getElementById('line4'),
+            document.getElementById('line5'), document.getElementById('line6'),
+            document.getElementById('line7'), document.getElementById('line8')
+        ];
+        const runColdBtn = document.getElementById('runCold');
+        const runWarmBtn = document.getElementById('runWarm');
+        const resetBtn = document.getElementById('resetBtn');
+        const resultsBox = document.getElementById('resultsBox');
+        const resultText = document.getElementById('resultText');
+
+        let isRunning = false;
+
+        function resetSimulation() {
+            isRunning = false;
+            
+            // Reset colors and text
+            cacheLines.forEach(line => line.className = 'cache-line color-hot w-[calc(25%-4px)]');
+            coldAccess.className = 'bg-blue-900/50 p-1 rounded-sm';
+            hotAccess1.className = 'bg-red-900/50';
+            hotAccess2.className = 'bg-red-900/50';
+
+            pipelineBar.style.width = '100%';
+            pipelineBar.className = 'pipeline-bar bg-green-500';
+            pipelineStatus.textContent = 'آماده...';
+            
+            coldLinePlaceholder.style.transform = 'translateX(-100%)';
+            coldLinePlaceholder.style.opacity = '0';
+            coldLinePlaceholder.style.width = '100%';
+
+            runColdBtn.disabled = false;
+            runWarmBtn.disabled = false;
+            resultsBox.classList.add('hidden');
         }
-    }
-}
+
+        async function coldRun() {
+            if (isRunning) return;
+            isRunning = true;
+            runColdBtn.disabled = true;
+            runWarmBtn.disabled = true;
+
+            // 1. Hot Loop Starts - Fast execution
+            pipelineStatus.textContent = 'اجرای سریع (Hot Execution)...';
+            pipelineBar.className = 'pipeline-bar bg-green-500 fast-transition';
+            pipelineBar.style.width = '100%';
+
+            // Simulate loop iteration before cold access
+            await new Promise(r => setTimeout(r, 1000));
+            hotAccess1.className = 'bg-green-500 ring-4 ring-green-300 p-1 rounded-sm';
+            await new Promise(r => setTimeout(r, 500));
+            hotAccess1.className = 'bg-red-900/50';
+
+            // 2. Cold Access - Cache Miss
+            pipelineStatus.textContent = 'خطا در حافظه پنهان (Cache Miss) به داده Cold!';
+            coldAccess.className = 'bg-blue-500 ring-4 ring-blue-300 p-1 rounded-sm slow-transition';
+            pipelineBar.className = 'pipeline-bar bg-yellow-400 slow-transition';
+            pipelineBar.style.width = '70%'; // Pipeline stall/slowdown
+
+            // Animate Cold Data loading (long latency)
+            await new Promise(r => setTimeout(r, 1500));
+            
+            // 3. Collective Cache Frostbite
+            pipelineStatus.textContent = 'انجماد حافظه جمعی (Cache Frostbite): خطوط داغ حذف می‌شوند.';
+            pipelineBar.className = 'pipeline-bar bg-red-600 slow-transition';
+            pipelineBar.style.width = '50%'; // More severe stall
+
+            // Cold data loaded, pushing out Hot data
+            coldLinePlaceholder.style.transform = 'translateX(0)';
+            coldLinePlaceholder.style.opacity = '1';
+            coldLinePlaceholder.className = 'cache-line color-cold mt-2 slow-transition';
+
+            await new Promise(r => setTimeout(r, 500));
+            
+            // Hot lines are evicted (turn gray/frostbite)
+            cacheLines.forEach(line => line.className = 'cache-line color-frostbite w-[calc(25%-4px)]');
+
+            // 4. Recovery (Slow Execution)
+            await new Promise(r => setTimeout(r, 1000));
+            pipelineStatus.textContent = 'اجرای کُند (Slow Execution)...';
+
+            // Simulate second hot access that is now slow
+            hotAccess2.className = 'bg-red-600 ring-4 ring-red-400 p-1 rounded-sm';
+            pipelineBar.className = 'pipeline-bar bg-red-400 fast-transition';
+            pipelineBar.style.width = '60%';
+
+            await new Promise(r => setTimeout(r, 1000));
+            hotAccess2.className = 'bg-red-900/50';
+
+            // 5. Finished
+            pipelineStatus.textContent = 'اجرای سرد تمام شد.';
+            pipelineBar.className = 'pipeline-bar bg-gray-500 fast-transition';
+            pipelineBar.style.width = '100%';
+
+            resultsBox.classList.remove('hidden');
+            resultText.className = 'text-red-400 font-mono';
+            resultText.textContent = '✅ زمان اجرا: طولانی (به دلیل انجماد و کندی بازیابی خطوط داغ)';
+
+            isRunning = false;
+        }
+
+        async function warmRun() {
+            if (isRunning) return;
+            isRunning = true;
+            runColdBtn.disabled = true;
+            runWarmBtn.disabled = true;
+
+            pipelineStatus.textContent = 'شروع مراسم پیش‌گرمایش...';
+            pipelineBar.className = 'pipeline-bar bg-yellow-600 fast-transition';
+            pipelineBar.style.width = '20%';
+
+            // 1. Pre-Warming Ceremony
+            await new Promise(r => setTimeout(r, 1000));
+            pipelineStatus.textContent = 'CONFIG_THRESHOLD لمس شد و وارد L1 Cache گردید.';
+            
+            // Cold data instantly enters L1 Cache (Zero-Overhead)
+            coldAccess.className = 'bg-yellow-400 ring-4 ring-yellow-200 p-1 rounded-sm fast-transition';
+            
+            coldLinePlaceholder.style.transform = 'translateX(0)';
+            coldLinePlaceholder.style.opacity = '1';
+            coldLinePlaceholder.className = 'cache-line color-hot mt-2 fast-transition'; /* Now HOT! */
+
+            await new Promise(r => setTimeout(r, 1000));
+            coldAccess.className = 'bg-red-900/50'; 
+            pipelineBar.style.width = '100%';
+            
+            // 2. Hot Loop Starts - Fast execution
+            pipelineStatus.textContent = 'اجرای سریع Hot Loop...';
+            pipelineBar.className = 'pipeline-bar bg-green-500 fast-transition';
+
+            // Simulate loop iteration
+            for (let i = 0; i < 3; i++) {
+                await new Promise(r => setTimeout(r, 300));
+                hotAccess1.className = 'bg-green-500 ring-4 ring-green-300 p-1 rounded-sm';
+                await new Promise(r => setTimeout(r, 100));
+                hotAccess1.className = 'bg-red-900/50';
+
+                await new Promise(r => setTimeout(r, 300));
+                coldAccess.className = 'bg-green-500 ring-4 ring-green-300 p-1 rounded-sm'; /* Instant access */
+                await new Promise(r => setTimeout(r, 100));
+                coldAccess.className = 'bg-red-900/50';
+
+                await new Promise(r => setTimeout(r, 300));
+                hotAccess2.className = 'bg-green-500 ring-4 ring-green-300 p-1 rounded-sm';
+                await new Promise(r => setTimeout(r, 100));
+                hotAccess2.className = 'bg-red-900/50';
+            }
+
+            // 3. Finished
+            pipelineStatus.textContent = 'اجرای گرم با موفقیت و سرعت بالا تمام شد.';
+            pipelineBar.className = 'pipeline-bar bg-green-500 fast-transition';
+            pipelineBar.style.width = '100%';
+
+            resultsBox.classList.remove('hidden');
+            resultText.className = 'text-green-400 font-mono';
+            resultText.textContent = '✅ زمان اجرا: کوتاه (بهبود 1.35x نسبت به اجرای سرد)';
+
+            isRunning = false;
+        }
+
+        runColdBtn.addEventListener('click', () => {
+            resetSimulation();
+            coldRun();
+        });
+
+        runWarmBtn.addEventListener('click', () => {
+            resetSimulation();
+            warmRun();
+        });
+
+        resetBtn.addEventListener('click', resetSimulation);
+
+        // Initial setup
+        window.onload = resetSimulation;
+
+    </script>
+</body>
+</html>
