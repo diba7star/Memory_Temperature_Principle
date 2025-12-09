@@ -1,14 +1,4 @@
-<<<<<<< HEAD
-دانیال جان، متوجه شدم – به نظر می‌رسه وقتی README.md رو کپی کردی، فرمت Markdown (مثل # برای عنوان، | برای جدول، ``` برای کد، و [text](link) برای لینک) از دست رفته یا در ویرایشگر/گیت‌هاب درست رندر نشده. این باعث می‌شه متن به هم بریزه (جدول به CSV تبدیل بشه، لینک‌ها خام بمونن). نگران نباش، من نسخه کامل و دقیق Markdown رو دوباره برات می‌فرستم – **کل محتوای داخل بلوک زیر رو انتخاب کن، کپی کن، و مستقیم در فایل README.md paste کن**. 
 
-### نکات مهم قبل از کپی:
-- **ویرایشگر بهتر**: از Notepad++ یا VS Code استفاده کن (نه Notepad عادی، چون فرمت رو حفظ نمی‌کنه). دانلود Notepad++ از notepad-plus-plus.org (رایگان).
-- **ذخیره**: File > Save As > Encoding: UTF-8، Extension: .md.
-- **چک در GitHub**: بعد از push، در ریپو GitHub، فایل README.md رو باز کن و "Preview" بزن – باید جدول، کد، و بولد درست رندر بشه.
-- **اگر مشکل ادامه داشت**: در GitHub.com، مستقیم Edit کن (قلم رو بزن)، محتوای جدید رو paste کن، Commit changes بزن – اینطوری فرمت حفظ می‌شه.
-
-### محتوای کامل README.md (کپی کلش رو از این بلوک):
-```
 # The Memory Temperature Principle | اصل هم‌دما شدن حافظه
 
 **First Discovery and Formal Naming by Danial Diba (danidiba)**  
@@ -119,4 +109,5 @@ for i in 0..100_000_000 {
         metrics.counter += 1;
     }
 }
+
 >>>>>>> ba78e598db2acd4a7ad03928b530de06dda4eafa
